@@ -1,0 +1,21 @@
+services:
+  workspace:
+    build:
+      context: .devcontainer
+      dockerfile: Dockerfile
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    command: sleep infinity
+    init: true
+    tty: true
+    volumes:
+      - .:/workspace:cached
+      - devcontainer-commandhistory:/commandhistory
+      - devcontainer-claude:/home/node/.claude
+      - devcontainer-config:/home/node/.config
+
+volumes:
+  devcontainer-commandhistory:
+  devcontainer-claude:
+  devcontainer-config:

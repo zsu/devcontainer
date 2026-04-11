@@ -1,0 +1,20 @@
+services:
+  workspace:
+    build:
+      context: .devcontainer
+      dockerfile: Dockerfile
+    command: sleep infinity
+    init: true
+    tty: true
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      - .:/workspace:cached
+      - devcontainer-commandhistory:/commandhistory
+      - devcontainer-claude:/home/node/.claude
+      - devcontainer-config:/home/node/.config
+
+volumes:
+  devcontainer-commandhistory:
+  devcontainer-claude:
+  devcontainer-config:

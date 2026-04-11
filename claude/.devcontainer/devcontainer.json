@@ -1,0 +1,38 @@
+{
+  "name": "AI Dev",
+  "dockerComposeFile": [
+    "../docker-compose.yml"
+  ],
+  "service": "workspace",
+  "workspaceFolder": "/workspace",
+  "remoteUser": "node",
+  "updateRemoteUserUID": true,
+  "shutdownAction": "stopCompose",
+  "containerEnv": {
+    "CLAUDE_CONFIG_DIR": "/home/node/.claude",
+    "XDG_CONFIG_HOME": "/home/node/.config",
+    "HISTFILE": "/commandhistory/.bash_history"
+  },
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash"
+      },
+      "extensions": [
+        "anthropic.claude-code",
+        "eamodio.gitlens",
+        "esbenp.prettier-vscode"
+      ]
+    }
+  },
+  "forwardPorts": [
+    5000
+  ],
+  "portsAttributes": {
+    "5000": {
+      "label": "App",
+      "onAutoForward": "notify"
+    }
+  },
+  "postCreateCommand": "bash -lc \"python3 --version && pip3 --version && gh --version | head -n 1 && zellij --version\""
+}
