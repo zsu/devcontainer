@@ -192,11 +192,15 @@ if command_exists devpod; then
     
     # Add Docker provider (default provider for local development)
     echo -e "${BLUE}Setting up Docker provider...${NC}"
-    devpod provider add docker || true
+    if devpod provider list 2>/dev/null | grep -qi 'docker'; then
+        echo -e "${GREEN}✓ Docker provider already registered${NC}"
+    else
+        devpod provider add docker
+    fi
     
     # Configure DevPod for SSH-only access (no browser/GUI)
     echo -e "${BLUE}Configuring DevPod for SSH-only mode...${NC}"
-    devpod context set-options -o IDE=ssh 2>/dev/null || true
+    devpod context set-options -o IDE=none 2>/dev/null || true
     echo -e "${GREEN}✓ SSH-only mode configured (no GUI required)${NC}"
     
     # CRITICAL: Disable idle timeout for SSH-only mode
@@ -298,6 +302,113 @@ echo -e "${YELLOW}If DevPod fails after Docker restart, run setup.sh again or:${
 echo -e "${BLUE}sudo chmod 666 /var/run/docker.sock${NC}"
 
 # ============================================================================
+# 12. Setup SSH agent (auto-starts on boot, forwarded into devcontainers)
+# ============================================================================
+echo -e "\n${YELLOW}Setting up SSH agent...${NC}"
+
+RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+SSH_AGENT_SOCKET=""
+SSH_AGENT_SOURCE=""
+
+# Helper: persist SSH_AUTH_SOCK to ~/.bashrc and apply to current session
+persist_ssh_auth_sock() {
+    local sock="$1"
+    local marker="$2"
+    export SSH_AUTH_SOCK="$sock"
+    if ! grep -q "$marker" "$HOME/.bashrc" 2>/dev/null; then
+        echo -e "${BLUE}Adding SSH_AUTH_SOCK to ~/.bashrc...${NC}"
+        printf '\n# SSH agent socket for DevPod git authentication\nexport SSH_AUTH_SOCK="%s"\n' "$sock" >> "$HOME/.bashrc"
+        echo -e "${GREEN}✓ SSH_AUTH_SOCK added to ~/.bashrc${NC}"
+    else
+        echo -e "${GREEN}✓ SSH_AUTH_SOCK already configured in ~/.bashrc${NC}"
+    fi
+}
+
+# Enable linger so user services survive logout and start on boot
+sudo loginctl enable-linger "$USER" 2>/dev/null || true
+
+# --- Strategy 1: already-running agent in current session ---
+if [ -n "${SSH_AUTH_SOCK:-}" ] && [ -S "$SSH_AUTH_SOCK" ]; then
+    echo -e "${GREEN}✓ SSH agent already running: ${SSH_AUTH_SOCK}${NC}"
+    SSH_AGENT_SOCKET="$SSH_AUTH_SOCK"
+    SSH_AGENT_SOURCE="existing"
+    persist_ssh_auth_sock "$SSH_AGENT_SOCKET" "$SSH_AGENT_SOCKET"
+
+# --- Strategy 2: use system-provided ssh-agent.service if available ---
+elif [ -f "/usr/lib/systemd/user/ssh-agent.service" ]; then
+    echo -e "${BLUE}Found system ssh-agent.service — starting it...${NC}"
+    systemctl --user daemon-reload 2>/dev/null || true
+    systemctl --user start ssh-agent 2>/dev/null || true
+    SYSTEM_SOCK="${RUNTIME_DIR}/ssh-agent.socket"
+    if [ -S "$SYSTEM_SOCK" ]; then
+        echo -e "${GREEN}✓ System ssh-agent started: ${SYSTEM_SOCK}${NC}"
+        SSH_AGENT_SOCKET="$SYSTEM_SOCK"
+        SSH_AGENT_SOURCE="system"
+        persist_ssh_auth_sock "$SSH_AGENT_SOCKET" "ssh-agent.socket"
+    else
+        echo -e "${YELLOW}  System ssh-agent.service did not produce a socket — falling back${NC}"
+    fi
+fi
+
+# --- Strategy 3: install and start custom devpod-ssh-agent service ---
+if [ -z "$SSH_AGENT_SOCKET" ]; then
+    SERVICE_DIR="$HOME/.config/systemd/user"
+    SERVICE_FILE="$SERVICE_DIR/devpod-ssh-agent.service"
+    CUSTOM_SOCK="${RUNTIME_DIR}/devpod-ssh-agent.socket"
+
+    if [ ! -f "$SERVICE_FILE" ]; then
+        echo -e "${BLUE}Installing devpod-ssh-agent systemd user service...${NC}"
+        mkdir -p "$SERVICE_DIR"
+        cat > "$SERVICE_FILE" << 'EOF'
+[Unit]
+Description=SSH key agent for DevPod
+
+[Service]
+Type=simple
+Environment=SSH_AUTH_SOCK=%t/devpod-ssh-agent.socket
+ExecStart=/usr/bin/ssh-agent -D -a %t/devpod-ssh-agent.socket
+
+[Install]
+WantedBy=default.target
+EOF
+        echo -e "${GREEN}✓ devpod-ssh-agent service file created${NC}"
+    else
+        echo -e "${GREEN}✓ devpod-ssh-agent service file already exists${NC}"
+    fi
+
+    systemctl --user daemon-reload 2>/dev/null || true
+    systemctl --user enable devpod-ssh-agent 2>/dev/null || true
+    systemctl --user start devpod-ssh-agent 2>/dev/null || true
+
+    # Persist immediately — socket path is known from the service definition
+    # regardless of whether the socket file exists yet at this moment
+    SSH_AGENT_SOCKET="$CUSTOM_SOCK"
+    SSH_AGENT_SOURCE="custom"
+    persist_ssh_auth_sock "$SSH_AGENT_SOCKET" "devpod-ssh-agent.socket"
+
+    # Wait briefly then verify
+    sleep 1
+    if [ -S "$CUSTOM_SOCK" ]; then
+        echo -e "${GREEN}✓ devpod-ssh-agent started: ${CUSTOM_SOCK}${NC}"
+    else
+        echo -e "${RED}✗ Could not start any SSH agent service${NC}"
+        echo -e "${YELLOW}  Try manually: eval \$(ssh-agent -s) && ssh-add ~/.ssh/id_ed25519${NC}"
+    fi
+fi
+
+# Final status
+if [ -n "$SSH_AGENT_SOCKET" ] && [ -S "$SSH_AGENT_SOCKET" ]; then
+    if ssh-add -l >/dev/null 2>&1; then
+        KEY_COUNT=$(ssh-add -l 2>/dev/null | wc -l)
+        echo -e "${GREEN}✓ SSH agent ready (${SSH_AGENT_SOURCE}), ${KEY_COUNT} key(s) loaded${NC}"
+    else
+        echo -e "${GREEN}✓ SSH agent ready (${SSH_AGENT_SOURCE})${NC}"
+        echo -e "${YELLOW}⚠ No keys loaded yet. Add your key:${NC}"
+        echo -e "${BLUE}  ssh-add ~/.ssh/id_ed25519${NC}"
+    fi
+fi
+
+# ============================================================================
 # Summary
 # ============================================================================
 echo -e "\n${BLUE}=== Setup Complete ===${NC}"
@@ -312,6 +423,10 @@ echo "   - DevPod won't auto-stop during SSH sessions"
 echo "   - You can keep working without interruption"
 echo "3. Docker socket permissions (chmod 666) set"
 echo "   - Allows DevPod agent to access Docker"
+echo "4. SSH agent configured as systemd user service"
+echo "   - Starts automatically on boot (no login required)"
+echo "   - Add your key once: ssh-add ~/.ssh/id_ed25519"
+echo "   - Keys are forwarded into all devcontainers"
 
 echo -e "\n${YELLOW}Next steps:${NC}"
 echo "1. Verify DevPod providers: ${BLUE}devpod provider list${NC}"
@@ -358,8 +473,18 @@ echo "- Docker socket: ${BLUE}ls -la /var/run/docker.sock${NC}"
 echo "- Docker access: ${BLUE}docker ps${NC}"
 echo "- DevPod status: ${BLUE}devpod version${NC}"
 echo "- DevPod providers: ${BLUE}devpod provider list${NC}"
+echo "- SSH agent: ${BLUE}systemctl --user status ssh-agent${NC} or ${BLUE}devpod-ssh-agent${NC}"
+echo "- Loaded keys: ${BLUE}ssh-add -l${NC}"
 
 echo -e "\n${YELLOW}Documentation:${NC}"
 echo "- DevPod: https://devpod.sh"
 echo "- Docker: https://docs.docker.com"
 echo "- DevContainers: https://containers.dev"
+
+if [ -z "${SSH_AUTH_SOCK:-}" ] || [ ! -S "${SSH_AUTH_SOCK}" ]; then
+    echo -e "\n${YELLOW}Note: SSH_AUTH_SOCK is not active in this shell.${NC}"
+    echo -e "${YELLOW}To avoid this, run setup with source so exports apply to your current session:${NC}"
+    echo -e "${BLUE}  source scripts/setup.sh${NC}"
+    echo -e "${YELLOW}Or apply it now:${NC}"
+    echo -e "${BLUE}  source ~/.bashrc${NC}"
+fi

@@ -8,11 +8,14 @@ services:
     tty: true
     security_opt:
       - no-new-privileges:true
+    environment:
+      - SSH_AUTH_SOCK=/run/host-ssh-agent.sock
     volumes:
       - .:/workspace:cached
       - devcontainer-commandhistory:/commandhistory
       - devcontainer-claude:/home/node/.claude
       - devcontainer-config:/home/node/.config
+      - ${SSH_AUTH_SOCK}:/run/host-ssh-agent.sock:ro
 
 volumes:
   devcontainer-commandhistory:
