@@ -71,15 +71,19 @@ ssh -T git@github.com       # test GitHub access
 
 ### Launch a devcontainer
 
+Use SSH URLs so the repo remote inside the container is SSH-based and git operations use the forwarded SSH agent automatically:
+
 ```bash
-devpod up <repo-url>[@branch]
+devpod up git@github.com:<org>/<repo>.git[@branch]
 ```
 
 Examples:
 ```bash
-devpod up https://github.com/org/repo.git
-devpod up https://github.com/org/repo.git@main
+devpod up git@github.com:org/repo.git
+devpod up git@github.com:org/repo.git@main
 ```
+
+> **Avoid HTTPS URLs** (`https://github.com/...`) — DevPod clones the repo using the URL you provide, so an HTTPS URL results in an HTTPS remote inside the container which will prompt for credentials on every `git fetch`/`push`.
 
 DevPod reads the `.devcontainer/devcontainer.json` from the repo, builds the image, and starts the container. Use the `claude/` or `claude_sandbox/` directory of this repo to point DevPod at a specific environment.
 
@@ -91,7 +95,7 @@ ssh <workspace-name>.devpod
 
 The workspace name is the repo name lowercased. For example:
 ```bash
-devpod up https://github.com/org/MyRepo.git
+devpod up git@github.com:org/MyRepo.git
 ssh myrepo.devpod
 ```
 
@@ -110,6 +114,6 @@ devpod delete <workspace-name>
 ### Troubleshooting
 
 - **Container not starting**: ensure Docker is running — `sudo systemctl start docker`
-- **SSH connection refused**: run `devpod up <repo-url> --ide none` again to restart a stopped workspace
+- **SSH connection refused**: run `devpod up git@github.com:<org>/<repo>.git` again to restart a stopped workspace
 - **Browser/GUI mode launching unexpectedly**: always pass `--ide none` to `devpod up`
 - **Git auth fails inside container**: check that keys are loaded on the host — `ssh-add -l`
