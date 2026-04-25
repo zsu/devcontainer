@@ -77,8 +77,8 @@ devpod up <repo-url>[@branch] --ide none
 
 Examples:
 ```bash
-devpod up https://github.com/org/repo.git --ide none
-devpod up https://github.com/org/repo.git@main --ide none
+devpod up https://github.com/org/repo.git
+devpod up https://github.com/org/repo.git@main
 ```
 
 DevPod reads the `.devcontainer/devcontainer.json` from the repo, builds the image, and starts the container. Use the `claude/` or `claude_sandbox/` directory of this repo to point DevPod at a specific environment.
