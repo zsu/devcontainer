@@ -72,7 +72,7 @@ ssh -T git@github.com       # test GitHub access
 ### Launch a devcontainer
 
 ```bash
-devpod up <repo-url>[@branch] --ide none
+devpod up <repo-url>[@branch]
 ```
 
 Examples:
