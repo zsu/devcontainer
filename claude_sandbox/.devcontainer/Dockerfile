@@ -33,7 +33,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     sudo \
     unzip \
     vim \
-    zsh \
     && rm -rf /var/lib/apt/lists/*
 
 RUN groupadd --gid "${USER_GID}" "${USERNAME}" \
@@ -61,7 +60,6 @@ RUN npm install -g @anthropic-ai/claude-code
 COPY init-firewall.sh /usr/local/bin/init-firewall.sh
 RUN chmod 0755 /usr/local/bin/init-firewall.sh
 
-#ENV SHELL=/bin/zsh
 ENV CLAUDE_CONFIG_DIR=/home/${USERNAME}/.claude
 ENV XDG_CONFIG_HOME=/home/${USERNAME}/.config
 ENV HISTFILE=/commandhistory/.bash_history

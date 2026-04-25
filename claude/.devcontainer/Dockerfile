@@ -29,7 +29,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     sudo \
     unzip \
     vim \
-    zsh \
     && rm -rf /var/lib/apt/lists/*
 
 RUN groupadd --gid "${USER_GID}" "${USERNAME}" \
