@@ -355,9 +355,10 @@ persist_ssh_auth_sock() {
     local sock="$1"
     local marker="$2"
     export SSH_AUTH_SOCK="$sock"
+    export DEVPOD_SSH_AUTH_SOCK="$sock"
     if ! grep -q "$marker" "$HOME/.bashrc" 2>/dev/null; then
         echo -e "${BLUE}Adding SSH_AUTH_SOCK to ~/.bashrc...${NC}"
-        printf '\n# SSH agent socket for DevPod git authentication\nexport SSH_AUTH_SOCK="%s"\n' "$sock" >> "$HOME/.bashrc"
+        printf '\n# SSH agent socket for DevPod git authentication\nexport SSH_AUTH_SOCK="%s"\nexport DEVPOD_SSH_AUTH_SOCK="$SSH_AUTH_SOCK"\n' "$sock" >> "$HOME/.bashrc"
         echo -e "${GREEN}✓ SSH_AUTH_SOCK added to ~/.bashrc${NC}"
     else
         echo -e "${GREEN}✓ SSH_AUTH_SOCK already configured in ~/.bashrc${NC}"
@@ -455,7 +456,7 @@ echo -e "\n${BLUE}=== Setup Complete ===${NC}"
 echo -e "${GREEN}✓ All required tools have been installed/verified${NC}"
 
 echo -e "\n${YELLOW}Important notes:${NC}"
-echo "1. SSH-only mode configured (IDE=ssh)"
+echo "1. SSH-only mode configured (IDE=none)"
 echo "   - No GUI/browser needed"
 echo "   - Full terminal access via SSH"
 echo "2. Idle timeout DISABLED (EXIT_AFTER_TIMEOUT=false)"
