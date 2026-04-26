@@ -27,6 +27,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     nodejs \
     npm \
     procps \
+    pipx \
     python3 \
     python3-pip \
     python3-venv \
@@ -56,6 +57,8 @@ RUN arch="$(dpkg --print-architecture)" \
     && rm -f /tmp/zellij /tmp/zellij.tar.gz
 
 RUN npm install -g @anthropic-ai/claude-code
+
+RUN pip3 install --no-cache-dir git+https://github.com/ZeroSumQuant/claude-conversation-extractor.git
 
 COPY init-firewall.sh /usr/local/bin/init-firewall.sh
 RUN chmod 0755 /usr/local/bin/init-firewall.sh
