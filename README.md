@@ -20,82 +20,54 @@ Restricted execution environment with outbound firewall for running untrusted or
 - **Network**: Allowlist-only — permits GitHub, Anthropic API, npm, PyPI, VSCode marketplace, and host network; blocks everything else
 - **Use when**: Running untrusted code, testing AI-generated scripts, or when outbound network isolation is required
 
-## Setup
+## Linux host
 
-### Linux host (DevPod — SSH into devcontainer)
+DevPod runs on the Linux host, builds and starts the container, and gives you direct SSH access. No GUI required. Supports Ubuntu/Debian and RHEL/CentOS/Rocky/Alma/Fedora.
 
-Run `scripts/setup.sh` on the host to install Docker, DevPod, and all required tools. Supports Ubuntu/Debian and RHEL/CentOS/Rocky/Alma/Fedora. Use `source` so the SSH agent environment is applied to your current shell:
+### 1. Install tools
+
+Use `source` so the SSH agent environment is applied to your current shell:
 
 ```bash
 source scripts/setup.sh
 ```
 
-### Windows client (VS Code + Dev Containers)
+### 2. SSH key setup
 
-```powershell
-.\scripts\setup.ps1
-```
-
-Installs Rancher Desktop (free Docker engine, Apache 2.0), VS Code, and the Dev Containers extension via `winget`.
-
-### macOS client (VS Code + Dev Containers)
-
+Generate a new key (or skip if you already have one):
 ```bash
-bash scripts/setup-mac.sh
+ssh-keygen -t ed25519 -C "your@email.com"
 ```
-
-Installs Rancher Desktop, VS Code, and the Dev Containers extension via Homebrew.
-
-### SSH Key Setup (required for git authentication inside devcontainers)
-
-The host's SSH agent is forwarded into every devcontainer, so git operations against private repos work without any extra configuration inside the container.
-
-**One-time setup:**
-
-1. Ensure your private key is on the host. Either generate a new one:
-   ```bash
-   ssh-keygen -t ed25519 -C "your@email.com"
-   ```
-   Or copy an existing key from your machine:
-   ```bash
-   scp ~/.ssh/id_ed25519 user@host:~/.ssh/id_ed25519
-   ssh user@host "chmod 600 ~/.ssh/id_ed25519"
-   ```
-
-2. If generating a new key, add the public key to GitHub under **Settings → SSH and GPG keys → New SSH key**:
-   ```bash
-   cat ~/.ssh/id_ed25519.pub
-   ```
-
-3. Ensure the key file has correct permissions (SSH will refuse to use it otherwise):
-   ```bash
-   chmod 600 ~/.ssh/id_ed25519
-   ```
-
-4. Load the key into the SSH agent. **Run `source scripts/setup.sh` first if you haven't already** — it installs and starts the agent service. Steps 1–3 above can be done before or after `setup.sh`, but `ssh-add` requires the agent to be running:
-   ```bash
-   ssh-add ~/.ssh/id_ed25519
-   ```
-
-After this, the agent retains the key across reboots and forwards it into devcontainers automatically. No further steps are needed before `devpod up`.
-
-**Verify:**
+Or copy an existing key from another machine:
 ```bash
-ssh-add -l                  # list loaded keys
-ssh -T git@github.com       # test GitHub access
+scp ~/.ssh/id_ed25519 user@host:~/.ssh/id_ed25519
+ssh user@host "chmod 600 ~/.ssh/id_ed25519"
 ```
 
-## Using the devcontainer
+Add the public key to GitHub under **Settings → SSH and GPG keys → New SSH key**:
+```bash
+cat ~/.ssh/id_ed25519.pub
+```
 
-There are two ways to launch and connect to the devcontainer depending on your platform:
+Set correct permissions (SSH refuses keys that are too open):
+```bash
+chmod 600 ~/.ssh/id_ed25519
+```
 
----
+Load the key into the agent (`setup.sh` must have been run first — it installs and starts the agent service):
+```bash
+ssh-add ~/.ssh/id_ed25519
+```
 
-### Option A — Linux host: DevPod (SSH access)
+The agent retains the key across reboots and forwards it into devcontainers automatically.
 
-**How it works:** DevPod runs on the Linux host, builds and starts the container, and gives you direct SSH access. No GUI required.
+Verify:
+```bash
+ssh-add -l              # list loaded keys
+ssh -T git@github.com   # test GitHub access
+```
 
-**Step 1 — Launch the container**
+### 3. Launch the devcontainer
 
 Use an SSH URL so the repo remote inside the container uses SSH (required for git auth passthrough). Always pass `--ide none` to prevent DevPod from opening a browser:
 
@@ -105,8 +77,7 @@ devpod up git@github.com:<org>/<repo>.git[@branch] --ide none
 
 > **Avoid HTTPS URLs** — DevPod clones using the URL you provide, so an HTTPS URL creates an HTTPS remote inside the container that will prompt for credentials on every `git fetch`/`push`.
 
-**Step 2 — SSH into the container**
-
+SSH into the container:
 ```bash
 ssh <workspace-name>.devpod
 ```
@@ -122,21 +93,14 @@ List all workspaces and their exact names:
 devpod list
 ```
 
-**Step 3 — Git SSH authentication**
-
-The host SSH agent is forwarded automatically into the container via `SSH_AUTH_SOCK`. Ensure your key is loaded on the host before running `devpod up`:
-```bash
-ssh-add -l              # verify keys are loaded
-ssh -T git@github.com   # test GitHub access from inside container
-```
-
-**Stop / delete a workspace**
+Stop or delete a workspace:
 ```bash
 devpod stop <workspace-name>
 devpod delete <workspace-name>
 ```
 
-**Troubleshooting**
+### Troubleshooting
+
 - **Container not starting**: `sudo systemctl start docker`
 - **Browser/GUI launches**: always include `--ide none`
 - **SSH connection refused**: re-run `devpod up ... --ide none` to restart a stopped workspace
@@ -144,16 +108,55 @@ devpod delete <workspace-name>
 
 ---
 
-### Option B — Windows / macOS: VS Code + Dev Containers extension
+## Windows
 
-**How it works:** VS Code connects to the container directly via the Dev Containers extension. Rancher Desktop provides the Docker engine. No SSH command needed — VS Code opens a full editor window inside the container.
+VS Code connects to the container via the Dev Containers extension. Rancher Desktop provides the Docker engine (free, Apache 2.0).
 
-**Step 1 — Start Rancher Desktop**
+### 1. Install tools
 
-Open Rancher Desktop and ensure the container engine is set to **dockerd (moby)**:
+```powershell
+.\scripts\setup.ps1
+```
+
+Installs Rancher Desktop, VS Code, and the Dev Containers extension via `winget`.
+
+### 2. SSH key setup
+
+Generate a new key (or skip if you already have one):
+```powershell
+ssh-keygen -t ed25519 -C "your@email.com"
+```
+`ssh-keygen` sets permissions automatically. If you copy an existing key instead, fix permissions with:
+```powershell
+icacls "$env:USERPROFILE\.ssh\id_ed25519" /inheritance:r /grant:r "${env:USERNAME}:R"
+```
+
+Add the public key to GitHub under **Settings → SSH and GPG keys → New SSH key**:
+```powershell
+Get-Content "$env:USERPROFILE\.ssh\id_ed25519.pub"
+```
+
+Start the OpenSSH agent service and load your key:
+```powershell
+Start-Service ssh-agent
+ssh-add "$env:USERPROFILE\.ssh\id_ed25519"
+```
+
+To start the agent automatically on every boot:
+```powershell
+Set-Service ssh-agent -StartupType Automatic
+```
+
+Verify:
+```powershell
+ssh-add -l              # list loaded keys
+ssh -T git@github.com   # test GitHub access
+```
+
+### 3. Launch the devcontainer
+
+Start Rancher Desktop and ensure the container engine is set to **dockerd (moby)**:
 `Preferences → Container Engine → dockerd (moby)`
-
-**Step 2 — Open the repo in VS Code**
 
 Clone the repo locally, open it in VS Code, then either:
 - Click **"Reopen in Container"** in the notification that appears, or
@@ -161,23 +164,77 @@ Clone the repo locally, open it in VS Code, then either:
 
 VS Code will build the image and reopen the editor inside the container.
 
-To use a specific environment (`claude/` or `claude_sandbox/`), VS Code will prompt you to choose if multiple `.devcontainer` configurations are found. Alternatively use:
+To use a specific environment (`claude/` or `claude_sandbox/`), VS Code will prompt you to choose if multiple `.devcontainer` configurations are found. Alternatively:
 
 `F1` → **Dev Containers: Clone Repository in Container Volume** → paste the repo URL
 
-**Step 3 — Git SSH authentication**
+The Dev Containers extension forwards the SSH agent from your machine into the container automatically.
 
-Ensure your SSH key is loaded in the system agent **before** opening the container:
+### Troubleshooting
 
-- **macOS**: `ssh-add ~/.ssh/id_ed25519` (keychain keeps it across reboots)
-- **Windows**: ensure OpenSSH agent is running, then:
-  ```powershell
-  Start-Service ssh-agent
-  ssh-add "$env:USERPROFILE\.ssh\id_ed25519"
-  ```
-
-The Dev Containers extension forwards `SSH_AUTH_SOCK` from your machine into the container automatically.
-
-**Troubleshooting**
 - **"Docker not found"**: ensure Rancher Desktop is running and engine is set to `dockerd`
-- **Git auth fails**: check key is loaded — `ssh-add -l` — and that `SSH_AUTH_SOCK` is set in your terminal
+- **Git auth fails**: check key is loaded — `ssh-add -l`
+
+---
+
+## macOS
+
+VS Code connects to the container via the Dev Containers extension. Rancher Desktop provides the Docker engine (free, Apache 2.0).
+
+### 1. Install tools
+
+```bash
+bash scripts/setup-mac.sh
+```
+
+Installs Rancher Desktop, VS Code, and the Dev Containers extension via Homebrew.
+
+### 2. SSH key setup
+
+Generate a new key (or skip if you already have one):
+```bash
+ssh-keygen -t ed25519 -C "your@email.com"
+```
+
+Add the public key to GitHub under **Settings → SSH and GPG keys → New SSH key**:
+```bash
+cat ~/.ssh/id_ed25519.pub
+```
+
+Set correct permissions:
+```bash
+chmod 600 ~/.ssh/id_ed25519
+```
+
+Load the key — the macOS keychain keeps it loaded across reboots automatically:
+```bash
+ssh-add ~/.ssh/id_ed25519
+```
+
+Verify:
+```bash
+ssh-add -l              # list loaded keys
+ssh -T git@github.com   # test GitHub access
+```
+
+### 3. Launch the devcontainer
+
+Start Rancher Desktop and ensure the container engine is set to **dockerd (moby)**:
+`Preferences → Container Engine → dockerd (moby)`
+
+Clone the repo locally, open it in VS Code, then either:
+- Click **"Reopen in Container"** in the notification that appears, or
+- Press `F1` → **Dev Containers: Reopen in Container**
+
+VS Code will build the image and reopen the editor inside the container.
+
+To use a specific environment (`claude/` or `claude_sandbox/`), VS Code will prompt you to choose if multiple `.devcontainer` configurations are found. Alternatively:
+
+`F1` → **Dev Containers: Clone Repository in Container Volume** → paste the repo URL
+
+The Dev Containers extension forwards the SSH agent from your machine into the container automatically.
+
+### Troubleshooting
+
+- **"Docker not found"**: ensure Rancher Desktop is running and engine is set to `dockerd`
+- **Git auth fails**: check key is loaded — `ssh-add -l`
