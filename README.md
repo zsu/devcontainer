@@ -22,7 +22,7 @@ Restricted execution environment with outbound firewall for running untrusted or
 
 ## Host Setup
 
-Run `scripts/setup.sh` on the host to install Docker, DevPod, and all required tools. Use `source` so the SSH agent environment is applied to your current shell:
+Run `scripts/setup.sh` on the host to install Docker, DevPod, and all required tools. Supports Ubuntu/Debian and RHEL/CentOS/Rocky/Alma/Fedora. Use `source` so the SSH agent environment is applied to your current shell:
 
 ```bash
 source scripts/setup.sh
