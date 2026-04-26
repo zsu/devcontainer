@@ -20,9 +20,9 @@ Restricted execution environment with outbound firewall for running untrusted or
 - **Network**: Allowlist-only — permits GitHub, Anthropic API, npm, PyPI, VSCode marketplace, and host network; blocks everything else
 - **Use when**: Running untrusted code, testing AI-generated scripts, or when outbound network isolation is required
 
-## Linux host
+## Linux
 
-DevPod runs on the Linux host, builds and starts the container, and gives you direct SSH access. No GUI required. Supports Ubuntu/Debian and RHEL/CentOS/Rocky/Alma/Fedora.
+DevPod runs on the Linux, builds and starts the container, and gives you direct SSH access. No GUI required. Supports Ubuntu/Debian and RHEL/CentOS/Rocky/Alma/Fedora.
 
 ### 1. Install tools
 
