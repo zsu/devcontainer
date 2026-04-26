@@ -6,8 +6,6 @@ services:
     command: sleep infinity
     init: true
     tty: true
-    security_opt:
-      - no-new-privileges:true
     environment:
       - SSH_AUTH_SOCK=/run/host-ssh-agent.sock
     volumes:
