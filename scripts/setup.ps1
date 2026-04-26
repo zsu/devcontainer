@@ -1,4 +1,3 @@
-#Requires -Version 7
 <#
 .SYNOPSIS
     Windows client setup script for DevContainer development.
@@ -7,6 +6,7 @@
     Installs VS Code, Rancher Desktop (free Docker-compatible engine, Apache 2.0),
     and the VS Code Dev Containers extension.
     Skips any tool that is already installed.
+    Compatible with Windows PowerShell 5.1 and PowerShell 7+.
 
     Rancher Desktop is used instead of Docker Desktop as it is free for all use
     including government and enterprise, and is a drop-in replacement.
@@ -20,7 +20,7 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-if (-not $IsWindows) {
+if ($env:OS -ne 'Windows_NT') {
     Write-Host "[x] This script is for Windows only. Use scripts/setup-mac.sh on macOS." -ForegroundColor Red
     exit 1
 }
@@ -113,7 +113,7 @@ $extensions = @{
 }
 
 if (-not (Test-Command 'code')) {
-    Write-Warn "'code' not in PATH — open a new terminal and re-run, or install extensions manually in VS Code."
+    Write-Warn "'code' not in PATH -- open a new terminal and re-run, or install extensions manually in VS Code."
 } else {
     $installed = code --list-extensions 2>$null
     foreach ($id in $extensions.Keys) {
@@ -124,7 +124,7 @@ if (-not (Test-Command 'code')) {
             Write-Info "Installing $name..."
             code --install-extension $id --force
             if ($LASTEXITCODE -eq 0) { Write-Ok "$name installed" }
-            else { Write-Warn "Failed — install $name manually in VS Code Extensions panel." }
+            else { Write-Warn "Failed -- install $name manually in VS Code Extensions panel." }
         }
     }
 }
@@ -136,14 +136,15 @@ Write-Header "Summary"
 
 Write-Host ""
 Write-Host "Next steps:" -ForegroundColor Yellow
-Write-Host "  1. Start Rancher Desktop -> Preferences -> Container Engine -> dockerd (moby)"
+Write-Host "  1. Start Rancher Desktop (uses Docker engine to run containers)"
+Write-Host "     If first run: Preferences -> Container Engine -> dockerd (moby)"
 Write-Host "  2. Open VS Code and connect to your devcontainer:"
 Write-Host "     F1 -> 'Dev Containers: Clone Repository in Container Volume'"
 Write-Host ""
 Write-Host "Note: Git SSH authentication inside the devcontainer requires" -ForegroundColor Yellow
-Write-Host "  Windows OpenSSH agent to be running with your key loaded:" -ForegroundColor Yellow
+Write-Host "  the Windows OpenSSH agent running with your key loaded:" -ForegroundColor Yellow
 Write-Host "  Start-Service ssh-agent"
-Write-Host "  ssh-add ~\.ssh\id_ed25519"
+Write-Host "  ssh-add $env:USERPROFILE\.ssh\id_ed25519"
 Write-Host ""
 Write-Host "Docs:" -ForegroundColor Yellow
 Write-Host "  - Rancher Desktop: https://rancherdesktop.io"

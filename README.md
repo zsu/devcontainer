@@ -173,7 +173,7 @@ Ensure your SSH key is loaded in the system agent **before** opening the contain
 - **Windows**: ensure OpenSSH agent is running, then:
   ```powershell
   Start-Service ssh-agent
-  ssh-add ~\.ssh\id_ed25519
+  ssh-add "$env:USERPROFILE\.ssh\id_ed25519"
   ```
 
 The Dev Containers extension forwards `SSH_AUTH_SOCK` from your machine into the container automatically.
