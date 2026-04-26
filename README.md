@@ -72,7 +72,7 @@ The host's SSH agent is forwarded into every devcontainer, so git operations aga
    chmod 600 ~/.ssh/id_ed25519
    ```
 
-4. Load the key into the SSH agent (the agent is installed and enabled on boot by `setup.sh`):
+4. Load the key into the SSH agent. **Run `source scripts/setup.sh` first if you haven't already** — it installs and starts the agent service. Steps 1–3 above can be done before or after `setup.sh`, but `ssh-add` requires the agent to be running:
    ```bash
    ssh-add ~/.ssh/id_ed25519
    ```
