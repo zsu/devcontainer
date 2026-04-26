@@ -20,13 +20,31 @@ Restricted execution environment with outbound firewall for running untrusted or
 - **Network**: Allowlist-only — permits GitHub, Anthropic API, npm, PyPI, VSCode marketplace, and host network; blocks everything else
 - **Use when**: Running untrusted code, testing AI-generated scripts, or when outbound network isolation is required
 
-## Host Setup
+## Setup
+
+### Linux host (DevPod — SSH into devcontainer)
 
 Run `scripts/setup.sh` on the host to install Docker, DevPod, and all required tools. Supports Ubuntu/Debian and RHEL/CentOS/Rocky/Alma/Fedora. Use `source` so the SSH agent environment is applied to your current shell:
 
 ```bash
 source scripts/setup.sh
 ```
+
+### Windows client (VS Code + Dev Containers)
+
+```powershell
+.\scripts\setup.ps1
+```
+
+Installs Rancher Desktop (free Docker engine, Apache 2.0), VS Code, and the Dev Containers extension via `winget`.
+
+### macOS client (VS Code + Dev Containers)
+
+```bash
+bash scripts/setup-mac.sh
+```
+
+Installs Rancher Desktop, VS Code, and the Dev Containers extension via Homebrew.
 
 ### SSH Key Setup (required for git authentication inside devcontainers)
 
@@ -67,33 +85,33 @@ ssh-add -l                  # list loaded keys
 ssh -T git@github.com       # test GitHub access
 ```
 
-## Using DevPod
+## Using the devcontainer
 
-### Launch a devcontainer
+There are two ways to launch and connect to the devcontainer depending on your platform:
 
-Use SSH URLs so the repo remote inside the container is SSH-based and git operations use the forwarded SSH agent automatically. Always pass `--ide none` to suppress the browser/GUI:
+---
+
+### Option A — Linux host: DevPod (SSH access)
+
+**How it works:** DevPod runs on the Linux host, builds and starts the container, and gives you direct SSH access. No GUI required.
+
+**Step 1 — Launch the container**
+
+Use an SSH URL so the repo remote inside the container uses SSH (required for git auth passthrough). Always pass `--ide none` to prevent DevPod from opening a browser:
 
 ```bash
 devpod up git@github.com:<org>/<repo>.git[@branch] --ide none
 ```
 
-Examples:
-```bash
-devpod up git@github.com:org/repo.git --ide none
-devpod up git@github.com:org/repo.git@main --ide none
-```
+> **Avoid HTTPS URLs** — DevPod clones using the URL you provide, so an HTTPS URL creates an HTTPS remote inside the container that will prompt for credentials on every `git fetch`/`push`.
 
-> **Avoid HTTPS URLs** (`https://github.com/...`) — DevPod clones the repo using the URL you provide, so an HTTPS URL results in an HTTPS remote inside the container which will prompt for credentials on every `git fetch`/`push`.
-
-DevPod reads the `.devcontainer/devcontainer.json` from the repo, builds the image, and starts the container. Use the `claude/` or `claude_sandbox/` directory of this repo to point DevPod at a specific environment.
-
-### SSH into a running devcontainer
+**Step 2 — SSH into the container**
 
 ```bash
 ssh <workspace-name>.devpod
 ```
 
-The workspace name is the repo name lowercased. For example:
+The workspace name is the repo name lowercased:
 ```bash
 devpod up git@github.com:org/MyRepo.git --ide none
 ssh myrepo.devpod
@@ -104,16 +122,62 @@ List all workspaces and their exact names:
 devpod list
 ```
 
-### Stop and delete a workspace
+**Step 3 — Git SSH authentication**
 
+The host SSH agent is forwarded automatically into the container via `SSH_AUTH_SOCK`. Ensure your key is loaded on the host before running `devpod up`:
+```bash
+ssh-add -l              # verify keys are loaded
+ssh -T git@github.com   # test GitHub access from inside container
+```
+
+**Stop / delete a workspace**
 ```bash
 devpod stop <workspace-name>
 devpod delete <workspace-name>
 ```
 
-### Troubleshooting
+**Troubleshooting**
+- **Container not starting**: `sudo systemctl start docker`
+- **Browser/GUI launches**: always include `--ide none`
+- **SSH connection refused**: re-run `devpod up ... --ide none` to restart a stopped workspace
+- **Git auth fails**: check keys are loaded — `ssh-add -l`
 
-- **Container not starting**: ensure Docker is running — `sudo systemctl start docker`
-- **SSH connection refused**: run `devpod up git@github.com:<org>/<repo>.git --ide none` again to restart a stopped workspace
-- **Browser/GUI mode launching unexpectedly**: always pass `--ide none` to `devpod up`
-- **Git auth fails inside container**: check that keys are loaded on the host — `ssh-add -l`
+---
+
+### Option B — Windows / macOS: VS Code + Dev Containers extension
+
+**How it works:** VS Code connects to the container directly via the Dev Containers extension. Rancher Desktop provides the Docker engine. No SSH command needed — VS Code opens a full editor window inside the container.
+
+**Step 1 — Start Rancher Desktop**
+
+Open Rancher Desktop and ensure the container engine is set to **dockerd (moby)**:
+`Preferences → Container Engine → dockerd (moby)`
+
+**Step 2 — Open the repo in VS Code**
+
+Clone the repo locally, open it in VS Code, then either:
+- Click **"Reopen in Container"** in the notification that appears, or
+- Press `F1` → **Dev Containers: Reopen in Container**
+
+VS Code will build the image and reopen the editor inside the container.
+
+To use a specific environment (`claude/` or `claude_sandbox/`), VS Code will prompt you to choose if multiple `.devcontainer` configurations are found. Alternatively use:
+
+`F1` → **Dev Containers: Clone Repository in Container Volume** → paste the repo URL
+
+**Step 3 — Git SSH authentication**
+
+Ensure your SSH key is loaded in the system agent **before** opening the container:
+
+- **macOS**: `ssh-add ~/.ssh/id_ed25519` (keychain keeps it across reboots)
+- **Windows**: ensure OpenSSH agent is running, then:
+  ```powershell
+  Start-Service ssh-agent
+  ssh-add ~\.ssh\id_ed25519
+  ```
+
+The Dev Containers extension forwards `SSH_AUTH_SOCK` from your machine into the container automatically.
+
+**Troubleshooting**
+- **"Docker not found"**: ensure Rancher Desktop is running and engine is set to `dockerd`
+- **Git auth fails**: check key is loaded — `ssh-add -l` — and that `SSH_AUTH_SOCK` is set in your terminal

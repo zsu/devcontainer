@@ -11,7 +11,8 @@
   "containerEnv": {
     "CLAUDE_CONFIG_DIR": "/home/node/.claude",
     "XDG_CONFIG_HOME": "/home/node/.config",
-    "HISTFILE": "/commandhistory/.bash_history"
+    "HISTFILE": "/commandhistory/.bash_history",
+    "SSH_AUTH_SOCK": "/run/host-ssh-agent.sock"
   },
   "customizations": {
     "vscode": {
