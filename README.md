@@ -6,7 +6,7 @@ of truth, no duplication.
 
 ## Environments
 
-### Default — AI Dev (root)
+### Default — AI Dev
 
 General-purpose development environment with unrestricted internet access.
 
