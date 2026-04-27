@@ -24,45 +24,15 @@ Restricted execution environment with outbound firewall for running untrusted or
 - **Network**: Allowlist-only — permits GitHub, Anthropic API, npm, PyPI, VSCode marketplace, and host network; blocks everything else
 - **Use when**: Running untrusted code, testing AI-generated scripts, or when outbound network isolation is required
 
-## Using this repo as a submodule
-
-### Add to a repo (once)
-
-```bash
-git submodule add git@github.com:<org>/devcontainer.git .devcontainer
-git commit -m "Add devcontainer as submodule"
-```
-
-### Clone a repo that already has the submodule
-
-```bash
-git clone --recurse-submodules git@github.com:<org>/<repo>.git
-```
-
-### Update devcontainer to latest
-
-```bash
-git submodule update --remote
-git commit -m "Update devcontainer to latest"
-```
-
-### VS Code behaviour
-
-- **Default env**: VS Code opens `.devcontainer/devcontainer.json` automatically — no prompt
-- **Sandbox env**: `F1` → **Dev Containers: Reopen in Container** → choose `claude_sandbox`
-
-### DevPod behaviour
-
-- **Default env**: `devpod up git@github.com:org/repo.git --ide none` — DevPod finds `devcontainer.json` automatically
-- **Sandbox env**: add `--devcontainer-path .devcontainer/claude_sandbox/devcontainer.json`
-
 ---
 
-## Linux host
+## Host Setup
+
+### Linux
 
 DevPod runs on the Linux host, builds and starts the container, and gives you direct SSH access. No GUI required. Supports Ubuntu/Debian and RHEL/CentOS/Rocky/Alma/Fedora.
 
-### 1. Install tools
+#### 1. Install tools
 
 Use `source` so the SSH agent environment is applied to your current shell:
 
@@ -70,7 +40,7 @@ Use `source` so the SSH agent environment is applied to your current shell:
 source scripts/setup.sh
 ```
 
-### 2. SSH key setup
+#### 2. SSH key setup
 
 Generate a new key (or skip if you already have one):
 ```bash
@@ -105,7 +75,7 @@ ssh-add -l              # list loaded keys
 ssh -T git@github.com   # test GitHub access
 ```
 
-### 3. Launch the devcontainer
+#### 3. Launch the devcontainer
 
 Use an SSH URL so the repo remote inside the container uses SSH (required for git auth passthrough). Always pass `--ide none` to prevent DevPod from opening a browser:
 
@@ -137,7 +107,7 @@ devpod stop <workspace-name>
 devpod delete <workspace-name>
 ```
 
-### Troubleshooting
+#### Troubleshooting
 
 - **Container not starting**: `sudo systemctl start docker`
 - **Browser/GUI launches**: always include `--ide none`
@@ -146,11 +116,11 @@ devpod delete <workspace-name>
 
 ---
 
-## Windows
+### Windows
 
 VS Code connects to the container via the Dev Containers extension. Rancher Desktop provides the Docker engine (free, Apache 2.0).
 
-### 1. Install tools
+#### 1. Install tools
 
 ```powershell
 .\scripts\setup.ps1
@@ -158,7 +128,7 @@ VS Code connects to the container via the Dev Containers extension. Rancher Desk
 
 Installs Rancher Desktop, VS Code, the Dev Containers extension via `winget`, and configures git.
 
-### 2. SSH key setup
+#### 2. SSH key setup
 
 Generate a new key (or skip if you already have one):
 ```powershell
@@ -191,7 +161,7 @@ ssh-add -l              # list loaded keys
 ssh -T git@github.com   # test GitHub access
 ```
 
-### 3. Launch the devcontainer
+#### 3. Launch the devcontainer
 
 Start Rancher Desktop and ensure the container engine is set to **dockerd (moby)**:
 `Preferences → Container Engine → dockerd (moby)`
@@ -204,18 +174,18 @@ VS Code will build the image and reopen the editor inside the container.
 
 The Dev Containers extension forwards the SSH agent from your machine into the container automatically.
 
-### Troubleshooting
+#### Troubleshooting
 
 - **"Docker not found"**: ensure Rancher Desktop is running and engine is set to `dockerd`
 - **Git auth fails**: check key is loaded — `ssh-add -l`
 
 ---
 
-## macOS
+### macOS
 
 VS Code connects to the container via the Dev Containers extension. Rancher Desktop provides the Docker engine (free, Apache 2.0).
 
-### 1. Install tools
+#### 1. Install tools
 
 ```bash
 bash scripts/setup-mac.sh
@@ -223,7 +193,7 @@ bash scripts/setup-mac.sh
 
 Installs Rancher Desktop, VS Code, the Dev Containers extension via Homebrew, and configures git.
 
-### 2. SSH key setup
+#### 2. SSH key setup
 
 Generate a new key (or skip if you already have one):
 ```bash
@@ -251,7 +221,7 @@ ssh-add -l              # list loaded keys
 ssh -T git@github.com   # test GitHub access
 ```
 
-### 3. Launch the devcontainer
+#### 3. Launch the devcontainer
 
 Start Rancher Desktop and ensure the container engine is set to **dockerd (moby)**:
 `Preferences → Container Engine → dockerd (moby)`
@@ -264,7 +234,49 @@ VS Code will build the image and reopen the editor inside the container.
 
 The Dev Containers extension forwards the SSH agent from your machine into the container automatically.
 
-### Troubleshooting
+#### Troubleshooting
 
 - **"Docker not found"**: ensure Rancher Desktop is running and engine is set to `dockerd`
 - **Git auth fails**: check key is loaded — `ssh-add -l`
+
+---
+
+## Using this repo as a submodule
+
+### Add to a repo (once)
+
+```bash
+git submodule add git@github.com:<org>/devcontainer.git .devcontainer
+git commit -m "Add devcontainer as submodule"
+```
+
+### Clone a repo that already has the submodule
+
+```bash
+git clone --recurse-submodules git@github.com:<org>/<repo>.git
+```
+
+### Update devcontainer to latest
+
+```bash
+# In the devcontainer repo — pull latest, push
+git pull && git push
+
+# In the consumer repo — advance the submodule pointer, push
+git submodule update --remote .devcontainer
+git add .devcontainer && git commit -m "Update devcontainer to latest" && git push
+```
+
+### VS Code behaviour
+
+VS Code **always prompts** to choose a configuration when the `.devcontainer/` folder contains more than one `devcontainer.json` (root + `claude_sandbox/`).
+
+- **Default env**: `F1` → **Dev Containers: Reopen in Container** → choose **AI Dev**
+- **Sandbox env**: same, choose **AI Dev Sandbox**
+
+### DevPod behaviour
+
+DevPod automatically uses `.devcontainer/devcontainer.json` (the default env) without prompting.
+
+- **Default env**: `devpod up git@github.com:<org>/<repo>.git --ide none`
+- **Sandbox env**: add `--devcontainer-path .devcontainer/claude_sandbox/devcontainer.json`
