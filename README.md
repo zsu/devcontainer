@@ -247,8 +247,12 @@ The Dev Containers extension forwards the SSH agent from your machine into the c
 
 ```bash
 git submodule add git@github.com:<org>/devcontainer.git .devcontainer
+git config -f .gitmodules submodule..devcontainer.ignore dirty
+git add .gitmodules
 git commit -m "Add devcontainer as submodule"
 ```
+
+The `ignore = dirty` setting prevents false dirty status caused by Docker bind mount timestamp changes.
 
 ### Clone a repo that already has the submodule
 
