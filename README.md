@@ -250,15 +250,11 @@ git subtree add --prefix .devcontainer git@github.com:<org>/devcontainer.git mai
 git push
 ```
 
-No `.gitmodules`, no `--recurse-submodules`, no `ignore = dirty` needed.
-
 ### Clone a repo that already has the subtree
 
 ```bash
 git clone git@github.com:<org>/<repo>.git
 ```
-
-Plain clone works — devcontainer files are embedded in the repo history.
 
 ### Update devcontainer to latest
 
