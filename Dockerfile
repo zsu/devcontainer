@@ -57,7 +57,7 @@ RUN npm install -g @anthropic-ai/claude-code \
     && git config --system --add safe.directory /workspace \
     && git config --system --add safe.directory '/workspaces/*'
 
-RUN printf '#!/bin/bash\n[ -d /workspaces ] && [ -n "$(ls /workspaces/ 2>/dev/null)" ] && rm -rf /workspace && ln -sf "/workspaces/$(ls /workspaces/ | head -1)" /workspace\n' \
+RUN printf '#!/bin/bash\nif [ -d /workspaces ] && [ -n "$(ls /workspaces/ 2>/dev/null)" ]; then\n  rm -rf /workspace\n  ln -sf "/workspaces/$(ls /workspaces/ | head -1)" /workspace\nfi\n' \
     > /usr/local/bin/init-workspace.sh \
     && chmod +x /usr/local/bin/init-workspace.sh
 
