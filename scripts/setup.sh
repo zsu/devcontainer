@@ -120,6 +120,10 @@ else
     echo -e "${GREEN}✓ Git installed successfully${NC}"
 fi
 
+# Configure git to auto-update submodules on pull (needed for devcontainer submodule)
+git config --global submodule.recurse true
+echo -e "${GREEN}✓ git submodule.recurse set to true${NC}"
+
 # ============================================================================
 # 4. Install DevPod
 # ============================================================================

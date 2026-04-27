@@ -130,6 +130,18 @@ if (-not (Test-Command 'code')) {
 }
 
 # ---------------------------------------------------------------------------
+# Git config
+# ---------------------------------------------------------------------------
+Write-Header "Git Configuration"
+
+if (Test-Command 'git') {
+    git config --global submodule.recurse true
+    Write-Ok "git submodule.recurse set to true (git pull auto-updates submodules)"
+} else {
+    Write-Warn "git not found -- install Git for Windows, then run: git config --global submodule.recurse true"
+}
+
+# ---------------------------------------------------------------------------
 # Summary
 # ---------------------------------------------------------------------------
 Write-Header "Summary"

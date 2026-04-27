@@ -1,28 +1,66 @@
 # Devcontainer Configurations
 
-Two devcontainer definitions for Claude CLI + Python 3 development environments.
+Shared devcontainer definitions for Claude CLI + Python 3 development environments.
+Other repos consume this repo as a **git submodule** at `.devcontainer/` — one source
+of truth, no duplication.
 
-## claude/
+## Environments
+
+### Default — AI Dev (root)
 
 General-purpose development environment with unrestricted internet access.
 
 - **Base**: python:3-bookworm (Debian 12)
-- **Tools**: Claude Code CLI, Python 3 + pip + venv, GitHub CLI, Node.js/npm, Zellij, Git, fzf, jq, vim, zsh
+- **Tools**: Claude Code CLI, Python 3 + pip + venv, GitHub CLI, Node.js/npm, Zellij, Git, fzf, jq, vim, cron
 - **Network**: Full internet access — no firewall restrictions
 - **Use when**: Everyday development, running Claude CLI, accessing any external APIs or resources
 
-## claude_sandbox/
+### claude_sandbox/
 
 Restricted execution environment with outbound firewall for running untrusted or AI-generated code safely.
 
 - **Base**: python:3-bookworm (Debian 12)
-- **Tools**: Same as `claude/`, plus iptables/ipset for network control
+- **Tools**: Same as default, plus iptables/ipset for network control
 - **Network**: Allowlist-only — permits GitHub, Anthropic API, npm, PyPI, VSCode marketplace, and host network; blocks everything else
 - **Use when**: Running untrusted code, testing AI-generated scripts, or when outbound network isolation is required
 
-## Linux
+## Using this repo as a submodule
 
-DevPod runs on the Linux, builds and starts the container, and gives you direct SSH access. No GUI required. Supports Ubuntu/Debian and RHEL/CentOS/Rocky/Alma/Fedora.
+### Add to a repo (once)
+
+```bash
+git submodule add git@github.com:<org>/devcontainer.git .devcontainer
+git commit -m "Add devcontainer as submodule"
+```
+
+### Clone a repo that already has the submodule
+
+```bash
+git clone --recurse-submodules git@github.com:<org>/<repo>.git
+```
+
+### Update devcontainer to latest
+
+```bash
+git submodule update --remote
+git commit -m "Update devcontainer to latest"
+```
+
+### VS Code behaviour
+
+- **Default env**: VS Code opens `.devcontainer/devcontainer.json` automatically — no prompt
+- **Sandbox env**: `F1` → **Dev Containers: Reopen in Container** → choose `claude_sandbox`
+
+### DevPod behaviour
+
+- **Default env**: `devpod up git@github.com:org/repo.git --ide none` — DevPod finds `devcontainer.json` automatically
+- **Sandbox env**: add `--devcontainer-path .devcontainer/claude_sandbox/devcontainer.json`
+
+---
+
+## Linux host
+
+DevPod runs on the Linux host, builds and starts the container, and gives you direct SSH access. No GUI required. Supports Ubuntu/Debian and RHEL/CentOS/Rocky/Alma/Fedora.
 
 ### 1. Install tools
 
@@ -118,7 +156,7 @@ VS Code connects to the container via the Dev Containers extension. Rancher Desk
 .\scripts\setup.ps1
 ```
 
-Installs Rancher Desktop, VS Code, and the Dev Containers extension via `winget`.
+Installs Rancher Desktop, VS Code, the Dev Containers extension via `winget`, and configures git.
 
 ### 2. SSH key setup
 
@@ -164,10 +202,6 @@ Clone the repo locally, open it in VS Code, then either:
 
 VS Code will build the image and reopen the editor inside the container.
 
-To use a specific environment (`claude/` or `claude_sandbox/`), VS Code will prompt you to choose if multiple `.devcontainer` configurations are found. Alternatively:
-
-`F1` → **Dev Containers: Clone Repository in Container Volume** → paste the repo URL
-
 The Dev Containers extension forwards the SSH agent from your machine into the container automatically.
 
 ### Troubleshooting
@@ -187,7 +221,7 @@ VS Code connects to the container via the Dev Containers extension. Rancher Desk
 bash scripts/setup-mac.sh
 ```
 
-Installs Rancher Desktop, VS Code, and the Dev Containers extension via Homebrew.
+Installs Rancher Desktop, VS Code, the Dev Containers extension via Homebrew, and configures git.
 
 ### 2. SSH key setup
 
@@ -227,10 +261,6 @@ Clone the repo locally, open it in VS Code, then either:
 - Press `F1` → **Dev Containers: Reopen in Container**
 
 VS Code will build the image and reopen the editor inside the container.
-
-To use a specific environment (`claude/` or `claude_sandbox/`), VS Code will prompt you to choose if multiple `.devcontainer` configurations are found. Alternatively:
-
-`F1` → **Dev Containers: Clone Repository in Container Volume** → paste the repo URL
 
 The Dev Containers extension forwards the SSH agent from your machine into the container automatically.
 

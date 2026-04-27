@@ -133,6 +133,18 @@ else
 fi
 
 # ---------------------------------------------------------------------------
+# Git config
+# ---------------------------------------------------------------------------
+header "Git Configuration"
+
+if command_exists git; then
+    git config --global submodule.recurse true
+    ok "git submodule.recurse set to true (git pull auto-updates submodules)"
+else
+    warn "git not found — install Xcode Command Line Tools, then run: git config --global submodule.recurse true"
+fi
+
+# ---------------------------------------------------------------------------
 # Summary
 # ---------------------------------------------------------------------------
 header "Summary"

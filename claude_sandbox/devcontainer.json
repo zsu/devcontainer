@@ -1,7 +1,7 @@
 {
   "name": "AI Dev Sandbox",
   "dockerComposeFile": [
-    "../docker-compose.yml"
+    "docker-compose.yml"
   ],
   "service": "workspace",
   "workspaceFolder": "/workspace",
@@ -35,6 +35,6 @@
       "onAutoForward": "notify"
     }
   },
-  "postCreateCommand": "bash -lc \"mkdir -p ~/.ssh && chmod 700 ~/.ssh && ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null && python3 --version && pip3 --version && gh --version | head -n 1 && zellij --version\"",
+  "postCreateCommand": "git config --global submodule.recurse true && bash -lc \"mkdir -p ~/.ssh && chmod 700 ~/.ssh && ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null && python3 --version && pip3 --version && gh --version | head -n 1 && zellij --version\"",
   "postStartCommand": "sudo service cron start && sudo /usr/local/bin/init-firewall.sh"
 }
