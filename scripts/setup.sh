@@ -341,6 +341,13 @@ echo -e "${BLUE}sudo chmod 666 /var/run/docker.sock${NC}"
 # ============================================================================
 echo -e "\n${YELLOW}Setting up SSH agent...${NC}"
 
+# Ensure ~/.bash_profile sources ~/.bashrc (login shells, e.g. AWS SSM sessions)
+if ! grep -q '\.bashrc' "$HOME/.bash_profile" 2>/dev/null; then
+    printf '\n# Source .bashrc for login shells (e.g. AWS SSM)\n[ -f "$HOME/.bashrc" ] && source "$HOME/.bashrc"\n' \
+        >> "$HOME/.bash_profile"
+    echo -e "${GREEN}✓ ~/.bash_profile updated to source ~/.bashrc${NC}"
+fi
+
 RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 SSH_AGENT_SOCKET=""
 SSH_AGENT_SOURCE=""
