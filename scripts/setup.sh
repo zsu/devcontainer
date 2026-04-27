@@ -225,15 +225,6 @@ export PATH="/usr/local/bin:$PATH"
 if command_exists devpod; then
     echo -e "${GREEN}✓ DevPod found in PATH${NC}"
     
-    # Initialize DevPod (creates config directory if needed)
-    if [ ! -d "$HOME/.devpod" ]; then
-        echo -e "${BLUE}Initializing DevPod configuration...${NC}"
-        devpod init --skip-credentials-setup || true
-        echo -e "${GREEN}✓ DevPod initialized${NC}"
-    else
-        echo -e "${GREEN}✓ DevPod configuration already exists${NC}"
-    fi
-    
     # Add Docker provider (default provider for local development)
     echo -e "${BLUE}Setting up Docker provider...${NC}"
     if devpod provider list 2>/dev/null | grep -qi 'docker'; then
@@ -425,19 +416,63 @@ EOF
     systemctl --user enable devpod-ssh-agent 2>/dev/null || true
     systemctl --user start devpod-ssh-agent 2>/dev/null || true
 
-    # Persist immediately — socket path is known from the service definition
-    # regardless of whether the socket file exists yet at this moment
-    SSH_AGENT_SOCKET="$CUSTOM_SOCK"
-    SSH_AGENT_SOURCE="custom"
-    persist_ssh_auth_sock "$SSH_AGENT_SOCKET" "devpod-ssh-agent.socket"
-
     # Wait briefly then verify
     sleep 1
     if [ -S "$CUSTOM_SOCK" ]; then
         echo -e "${GREEN}✓ devpod-ssh-agent started: ${CUSTOM_SOCK}${NC}"
+        SSH_AGENT_SOCKET="$CUSTOM_SOCK"
+        SSH_AGENT_SOURCE="custom"
+        persist_ssh_auth_sock "$SSH_AGENT_SOCKET" "devpod-ssh-agent.socket"
     else
-        echo -e "${RED}✗ Could not start any SSH agent service${NC}"
-        echo -e "${YELLOW}  Try manually: eval \$(ssh-agent -s) && ssh-add ~/.ssh/id_ed25519${NC}"
+        echo -e "${YELLOW}  systemd user service unavailable — trying fixed socket fallback${NC}"
+    fi
+fi
+
+# --- Strategy 4: fixed socket path (SSM / no-systemd fallback) ---
+if [ -z "$SSH_AGENT_SOCKET" ]; then
+    FIXED_SOCK="$HOME/.ssh/agent.sock"
+    echo -e "${BLUE}Starting SSH agent with fixed socket (SSM-compatible)...${NC}"
+
+    rm -f "$FIXED_SOCK"
+    ssh-agent -a "$FIXED_SOCK" > /dev/null 2>&1
+
+    if [ -S "$FIXED_SOCK" ]; then
+        SSH_AGENT_SOCKET="$FIXED_SOCK"
+        SSH_AGENT_SOURCE="fixed-socket"
+        export SSH_AUTH_SOCK="$FIXED_SOCK"
+        export DEVPOD_SSH_AUTH_SOCK="$FIXED_SOCK"
+        echo -e "${GREEN}✓ SSH agent started: ${FIXED_SOCK}${NC}"
+
+        # Load key now — user types passphrase once
+        if [ -f "$HOME/.ssh/id_ed25519" ]; then
+            echo -e "${BLUE}Loading SSH key (enter passphrase when prompted)...${NC}"
+            ssh-add "$HOME/.ssh/id_ed25519" && \
+                echo -e "${GREEN}✓ SSH key loaded${NC}" || \
+                echo -e "${YELLOW}⚠ Key not loaded — run: ssh-add ~/.ssh/id_ed25519${NC}"
+        fi
+
+        # Write smart bashrc entry — restarts agent if dead on next SSM session
+        MARKER="devpod-ssh-agent-fixed"
+        if ! grep -q "$MARKER" "$HOME/.bashrc" 2>/dev/null; then
+            cat >> "$HOME/.bashrc" << 'BASHRC_EOF'
+
+# SSH agent with persistent fixed socket (SSM-compatible) devpod-ssh-agent-fixed
+_SSH_SOCK="$HOME/.ssh/agent.sock"
+export SSH_AUTH_SOCK="$_SSH_SOCK"
+export DEVPOD_SSH_AUTH_SOCK="$_SSH_SOCK"
+ssh-add -l >/dev/null 2>&1; _SSH_RC=$?
+if [ $_SSH_RC -eq 2 ]; then
+    rm -f "$_SSH_SOCK"
+    ssh-agent -a "$_SSH_SOCK" >/dev/null 2>&1
+    echo "SSH agent restarted. Run: ssh-add ~/.ssh/id_ed25519"
+fi
+unset _SSH_SOCK _SSH_RC
+BASHRC_EOF
+            echo -e "${GREEN}✓ Smart SSH agent entry added to ~/.bashrc${NC}"
+        fi
+    else
+        echo -e "${RED}✗ Could not start SSH agent${NC}"
+        echo -e "${YELLOW}  Try manually: ssh-agent -a ~/.ssh/agent.sock && ssh-add ~/.ssh/id_ed25519${NC}"
     fi
 fi
 
