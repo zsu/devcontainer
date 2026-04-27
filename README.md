@@ -262,11 +262,14 @@ Run these on the **host** (not inside the devcontainer):
 
 ```bash
 # In the devcontainer repo — pull latest, push
-git pull && git push
+git pull
+git push
 
 # In the consumer repo — advance the submodule pointer, push
 git submodule update --remote .devcontainer
-git add .devcontainer && git commit -m "Update devcontainer to latest" && git push
+git add .devcontainer
+git commit -m "Update devcontainer to latest"
+git push
 ```
 
 Then rebuild the container to apply the changes:
