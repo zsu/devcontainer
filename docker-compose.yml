@@ -7,7 +7,6 @@ services:
     init: true
     tty: true
     volumes:
-      - .:/workspace:cached
       - devcontainer-commandhistory:/commandhistory
       - devcontainer-claude:/home/node/.claude
       - devcontainer-config:/home/node/.config
