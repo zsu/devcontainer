@@ -1,18 +1,20 @@
 {
   "name": "AI Dev Sandbox",
-  "dockerComposeFile": [
-    "docker-compose.yml"
-  ],
-  "service": "workspace",
+  "build": { "context": ".", "dockerfile": "Dockerfile" },
   "workspaceFolder": "/workspace",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
+  "mounts": [
+    "source=devcontainer-commandhistory-${localWorkspaceFolderBasename},target=/commandhistory,type=volume",
+    "source=devcontainer-claude-${localWorkspaceFolderBasename},target=/home/node/.claude,type=volume",
+    "source=devcontainer-config-${localWorkspaceFolderBasename},target=/home/node/.config,type=volume"
+  ],
+  "runArgs": ["--init", "--cap-add=NET_ADMIN", "--cap-add=NET_RAW"],
   "remoteUser": "node",
   "updateRemoteUserUID": true,
-  "shutdownAction": "stopCompose",
   "containerEnv": {
     "CLAUDE_CONFIG_DIR": "/home/node/.claude",
     "XDG_CONFIG_HOME": "/home/node/.config",
-    "HISTFILE": "/commandhistory/.bash_history",
-    "SSH_AUTH_SOCK": "/run/host-ssh-agent.sock"
+    "HISTFILE": "/commandhistory/.bash_history"
   },
   "customizations": {
     "vscode": {
@@ -26,9 +28,7 @@
       ]
     }
   },
-  "forwardPorts": [
-    5000
-  ],
+  "forwardPorts": [5000],
   "portsAttributes": {
     "5000": {
       "label": "App",
@@ -36,5 +36,5 @@
     }
   },
   "postCreateCommand": "git config --global submodule.recurse true && git config --global --add safe.directory /workspace && bash -lc \"mkdir -p ~/.ssh && chmod 700 ~/.ssh && ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null && python3 --version && pip3 --version && gh --version | head -n 1 && zellij --version\"",
-  "postStartCommand": "sudo service cron start && sudo /usr/local/bin/init-firewall.sh"
+  "postStartCommand": "sudo /usr/local/bin/init-workspace.sh && sudo service cron start && sudo /usr/local/bin/init-firewall.sh"
 }
