@@ -269,6 +269,16 @@ git submodule update --remote .devcontainer
 git add .devcontainer && git commit -m "Update devcontainer to latest" && git push
 ```
 
+Then rebuild the container to apply the changes:
+
+**DevPod:**
+```bash
+devpod up git@github.com:<org>/<repo>.git --recreate --ide none
+```
+
+**VS Code:**
+`F1` → **Dev Containers: Rebuild Container**
+
 ### VS Code behaviour
 
 VS Code **always prompts** to choose a configuration when the `.devcontainer/` folder contains more than one `devcontainer.json` (root + `claude_sandbox/`).
