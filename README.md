@@ -82,8 +82,6 @@ Use an SSH URL so the repo remote inside the container uses SSH (required for gi
 devpod up git@github.com:<org>/<repo>.git[@branch] --ide none
 ```
 
-> **Avoid HTTPS URLs** — DevPod clones using the URL you provide, so an HTTPS URL creates an HTTPS remote inside the container that will prompt for credentials on every `git fetch`/`push`.
-
 SSH into the container:
 ```bash
 ssh <workspace-name>.devpod
@@ -295,14 +293,3 @@ ssh <workspace-name>.devpod
 ```
 
 - **Sandbox env**: add `--devcontainer-path .devcontainer/claude_sandbox/devcontainer.json`
-
-### Migrating an existing consumer repo from submodule to subtree
-
-```bash
-git submodule deinit .devcontainer
-git rm .devcontainer
-rm -f .gitmodules
-git commit -m "Remove devcontainer submodule"
-git subtree add --prefix .devcontainer git@github.com:<org>/devcontainer.git main --squash
-git push
-```
