@@ -1,19 +1,24 @@
 {
   "name": "AI Dev",
-  "dockerComposeFile": [
-    "docker-compose.yml"
-  ],
-  "service": "workspace",
+  "build": {
+    "context": ".",
+    "dockerfile": "Dockerfile"
+  },
   "workspaceFolder": "/workspace",
   "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
+  "mounts": [
+    "source=devcontainer-commandhistory-${localWorkspaceFolderBasename},target=/commandhistory,type=volume",
+    "source=devcontainer-claude-${localWorkspaceFolderBasename},target=/home/node/.claude,type=volume",
+    "source=devcontainer-config-${localWorkspaceFolderBasename},target=/home/node/.config,type=volume"
+  ],
+  "runArgs": ["--init"],
   "remoteUser": "node",
   "updateRemoteUserUID": true,
-  "shutdownAction": "stopCompose",
+  "shutdownAction": "stopContainer",
   "containerEnv": {
     "CLAUDE_CONFIG_DIR": "/home/node/.claude",
     "XDG_CONFIG_HOME": "/home/node/.config",
-    "HISTFILE": "/commandhistory/.bash_history",
-    "SSH_AUTH_SOCK": "/run/host-ssh-agent.sock"
+    "HISTFILE": "/commandhistory/.bash_history"
   },
   "customizations": {
     "vscode": {
