@@ -1,8 +1,7 @@
 # Devcontainer Configurations
 
 Shared devcontainer definitions for Claude CLI + Python 3 development environments.
-Other repos consume this repo as a **git submodule** at `.devcontainer/` — one source
-of truth, no duplication.
+Other repos consume this repo as a **git subtree** at `.devcontainer/`
 
 ## Environments
 
@@ -113,6 +112,7 @@ devpod delete <workspace-name>
 - **Browser/GUI launches**: always include `--ide none`
 - **SSH connection refused**: re-run `devpod up ... --ide none` to restart a stopped workspace
 - **Git auth fails**: check keys are loaded — `ssh-add -l`
+- **Tools missing (no zellij/claude)**: DevPod used a default image — ensure `.devcontainer/` exists in the repo (run `git subtree add` if not yet added)
 
 ---
 
@@ -241,38 +241,32 @@ The Dev Containers extension forwards the SSH agent from your machine into the c
 
 ---
 
-## Using this repo as a submodule
+## Using this repo as a subtree
 
 ### Add to a repo (once)
 
 ```bash
-git submodule add git@github.com:<org>/devcontainer.git .devcontainer
-git config -f .gitmodules submodule..devcontainer.ignore dirty
-git add .gitmodules
-git commit -m "Add devcontainer as submodule"
+git subtree add --prefix .devcontainer git@github.com:<org>/devcontainer.git main --squash
+git push
 ```
 
-The `ignore = dirty` setting prevents false dirty status caused by Docker bind mount timestamp changes.
+No `.gitmodules`, no `--recurse-submodules`, no `ignore = dirty` needed.
 
-### Clone a repo that already has the submodule
+### Clone a repo that already has the subtree
 
 ```bash
-git clone --recurse-submodules git@github.com:<org>/<repo>.git
+git clone git@github.com:<org>/<repo>.git
 ```
+
+Plain clone works — devcontainer files are embedded in the repo history.
 
 ### Update devcontainer to latest
 
-Run these on the **host** (not inside the devcontainer):
+Run on the **host** (not inside the devcontainer):
 
 ```bash
-# In the devcontainer repo — pull latest, push
-git pull
-git push
-
-# In the consumer repo — advance the submodule pointer, push
-git submodule update --remote .devcontainer
-git add .devcontainer
-git commit -m "Update devcontainer to latest"
+# One person runs this and pushes — all teammates get the update via plain git pull
+git subtree pull --prefix .devcontainer git@github.com:<org>/devcontainer.git main --squash
 git push
 ```
 
@@ -297,5 +291,22 @@ VS Code **always prompts** to choose a configuration when the `.devcontainer/` f
 
 DevPod automatically uses `.devcontainer/devcontainer.json` (the default env) without prompting.
 
-- **Default env**: `devpod up git@github.com:<org>/<repo>.git --ide none`
+Because devcontainer files are embedded in the repo, `devpod up git@...` works directly — no local clone needed:
+
+```bash
+devpod up git@github.com:<org>/<repo>.git --ide none
+ssh <workspace-name>.devpod
+```
+
 - **Sandbox env**: add `--devcontainer-path .devcontainer/claude_sandbox/devcontainer.json`
+
+### Migrating an existing consumer repo from submodule to subtree
+
+```bash
+git submodule deinit .devcontainer
+git rm .devcontainer
+rm -f .gitmodules
+git commit -m "Remove devcontainer submodule"
+git subtree add --prefix .devcontainer git@github.com:<org>/devcontainer.git main --squash
+git push
+```
