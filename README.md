@@ -258,6 +258,8 @@ git clone --recurse-submodules git@github.com:<org>/<repo>.git
 
 ### Update devcontainer to latest
 
+Run these on the **host** (not inside the devcontainer):
+
 ```bash
 # In the devcontainer repo — pull latest, push
 git pull && git push
