@@ -53,8 +53,7 @@ RUN arch="$(dpkg --print-architecture)" \
     && install /tmp/zellij /usr/local/bin/zellij \
     && rm -f /tmp/zellij /tmp/zellij.tar.gz
 
-RUN npm install -g @anthropic-ai/claude-code \
-    && git config --system --add safe.directory /workspace
+RUN git config --system --add safe.directory /workspace
 
 ENV CLAUDE_CONFIG_DIR=/home/${USERNAME}/.claude
 ENV XDG_CONFIG_HOME=/home/${USERNAME}/.config
@@ -62,6 +61,7 @@ ENV HISTFILE=/commandhistory/.bash_history
 ENV PATH="/home/${USERNAME}/.local/bin:${PATH}"
 
 USER ${USERNAME}
+RUN curl -fsSL https://claude.ai/install.sh | bash
 RUN pipx install git+https://github.com/ZeroSumQuant/claude-conversation-extractor.git
 
 WORKDIR /workspace
