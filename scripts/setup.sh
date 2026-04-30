@@ -352,33 +352,69 @@ RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 SSH_AGENT_SOCKET=""
 SSH_AGENT_SOURCE=""
 
-# Helper: persist SSH_AUTH_SOCK to ~/.bashrc and apply to current session
+# Marker used to dedupe SSH_AUTH_SOCK entries in ~/.bashrc across reruns
+SSH_AUTH_SOCK_MARKER="# DEVPOD_SSH_AUTH_SOCK_MARKER"
+
+# Helper: persist SSH_AUTH_SOCK to ~/.bashrc and apply to current session.
+# Uses a fixed marker so reruns replace the existing entry instead of appending
+# duplicates (previous behaviour used the socket path itself as the marker,
+# which accumulated dead exports whenever the agent path changed).
 persist_ssh_auth_sock() {
     local sock="$1"
-    local marker="$2"
     export SSH_AUTH_SOCK="$sock"
     export DEVPOD_SSH_AUTH_SOCK="$sock"
-    if ! grep -q "$marker" "$HOME/.bashrc" 2>/dev/null; then
-        echo -e "${BLUE}Adding SSH_AUTH_SOCK to ~/.bashrc...${NC}"
-        printf '\n# SSH agent socket for DevPod git authentication\nexport SSH_AUTH_SOCK="%s"\nexport DEVPOD_SSH_AUTH_SOCK="$SSH_AUTH_SOCK"\n' "$sock" >> "$HOME/.bashrc"
-        echo -e "${GREEN}✓ SSH_AUTH_SOCK added to ~/.bashrc${NC}"
+    if grep -q "$SSH_AUTH_SOCK_MARKER" "$HOME/.bashrc" 2>/dev/null; then
+        # Replace the existing block (marker line + 2 export lines)
+        local tmp
+        tmp=$(mktemp)
+        awk -v marker="$SSH_AUTH_SOCK_MARKER" '
+            $0 ~ marker {skip=3; next}
+            skip>0 {skip--; next}
+            {print}
+        ' "$HOME/.bashrc" > "$tmp"
+        mv "$tmp" "$HOME/.bashrc"
+        echo -e "${BLUE}Updating SSH_AUTH_SOCK in ~/.bashrc...${NC}"
     else
-        echo -e "${GREEN}✓ SSH_AUTH_SOCK already configured in ~/.bashrc${NC}"
+        echo -e "${BLUE}Adding SSH_AUTH_SOCK to ~/.bashrc...${NC}"
     fi
+    printf '\n%s\nexport SSH_AUTH_SOCK="%s"\nexport DEVPOD_SSH_AUTH_SOCK="$SSH_AUTH_SOCK"\n' \
+        "$SSH_AUTH_SOCK_MARKER" "$sock" >> "$HOME/.bashrc"
+    echo -e "${GREEN}✓ SSH_AUTH_SOCK persisted${NC}"
+}
+
+# Returns 0 if the given socket path is at a stable, persistent location
+# (systemd runtime dir or ~/.ssh). OpenSSH's default ephemeral path
+# /tmp/ssh-XXXXXX/agent.PID is rejected — that path disappears when the agent
+# dies and locking it into ~/.bashrc breaks DevPod agent forwarding.
+is_stable_sock_path() {
+    local sock="$1"
+    case "$sock" in
+        "$RUNTIME_DIR"/*) return 0 ;;
+        "$HOME/.ssh/"*)   return 0 ;;
+        *)                return 1 ;;
+    esac
 }
 
 # Enable linger so user services survive logout and start on boot
 sudo loginctl enable-linger "$USER" 2>/dev/null || true
 
-# --- Strategy 1: already-running agent in current session ---
+# --- Strategy 1: already-running agent at a STABLE path ---
+# Skip if SSH_AUTH_SOCK points to an ephemeral /tmp/ssh-XXX/agent.YYY path —
+# that disappears across sessions/reboots. Fall through to Strategies 2-4
+# which set up agents at predictable, persistent locations.
 if [ -n "${SSH_AUTH_SOCK:-}" ] && [ -S "$SSH_AUTH_SOCK" ]; then
-    echo -e "${GREEN}✓ SSH agent already running: ${SSH_AUTH_SOCK}${NC}"
-    SSH_AGENT_SOCKET="$SSH_AUTH_SOCK"
-    SSH_AGENT_SOURCE="existing"
-    persist_ssh_auth_sock "$SSH_AGENT_SOCKET" "$SSH_AGENT_SOCKET"
+    if is_stable_sock_path "$SSH_AUTH_SOCK"; then
+        echo -e "${GREEN}✓ SSH agent already running at stable path: ${SSH_AUTH_SOCK}${NC}"
+        SSH_AGENT_SOCKET="$SSH_AUTH_SOCK"
+        SSH_AGENT_SOURCE="existing"
+        persist_ssh_auth_sock "$SSH_AGENT_SOCKET"
+    else
+        echo -e "${YELLOW}  Found agent at ephemeral path (${SSH_AUTH_SOCK}) — ignoring and provisioning a stable socket${NC}"
+    fi
+fi
 
 # --- Strategy 2: use system-provided ssh-agent.service if available ---
-elif [ -f "/usr/lib/systemd/user/ssh-agent.service" ]; then
+if [ -z "$SSH_AGENT_SOCKET" ] && [ -f "/usr/lib/systemd/user/ssh-agent.service" ]; then
     echo -e "${BLUE}Found system ssh-agent.service — starting it...${NC}"
     systemctl --user daemon-reload 2>/dev/null || true
     systemctl --user start ssh-agent 2>/dev/null || true
@@ -387,7 +423,7 @@ elif [ -f "/usr/lib/systemd/user/ssh-agent.service" ]; then
         echo -e "${GREEN}✓ System ssh-agent started: ${SYSTEM_SOCK}${NC}"
         SSH_AGENT_SOCKET="$SYSTEM_SOCK"
         SSH_AGENT_SOURCE="system"
-        persist_ssh_auth_sock "$SSH_AGENT_SOCKET" "ssh-agent.socket"
+        persist_ssh_auth_sock "$SSH_AGENT_SOCKET"
     else
         echo -e "${YELLOW}  System ssh-agent.service did not produce a socket — falling back${NC}"
     fi
@@ -429,7 +465,7 @@ EOF
         echo -e "${GREEN}✓ devpod-ssh-agent started: ${CUSTOM_SOCK}${NC}"
         SSH_AGENT_SOCKET="$CUSTOM_SOCK"
         SSH_AGENT_SOURCE="custom"
-        persist_ssh_auth_sock "$SSH_AGENT_SOCKET" "devpod-ssh-agent.socket"
+        persist_ssh_auth_sock "$SSH_AGENT_SOCKET"
     else
         echo -e "${YELLOW}  systemd user service unavailable — trying fixed socket fallback${NC}"
     fi
@@ -438,10 +474,17 @@ fi
 # --- Strategy 4: fixed socket path (SSM / no-systemd fallback) ---
 if [ -z "$SSH_AGENT_SOCKET" ]; then
     FIXED_SOCK="$HOME/.ssh/agent.sock"
-    echo -e "${BLUE}Starting SSH agent with fixed socket (SSM-compatible)...${NC}"
 
-    rm -f "$FIXED_SOCK"
-    ssh-agent -a "$FIXED_SOCK" > /dev/null 2>&1
+    # Reuse an existing healthy agent at the fixed path; only (re)start if
+    # the socket is missing or unresponsive. Avoids killing a live agent
+    # whose loaded keys would otherwise be lost on rerun.
+    if [ -S "$FIXED_SOCK" ] && SSH_AUTH_SOCK="$FIXED_SOCK" ssh-add -l >/dev/null 2>&1; then
+        echo -e "${GREEN}✓ Reusing existing SSH agent at fixed socket: ${FIXED_SOCK}${NC}"
+    else
+        echo -e "${BLUE}Starting SSH agent with fixed socket (SSM-compatible)...${NC}"
+        rm -f "$FIXED_SOCK"
+        ssh-agent -a "$FIXED_SOCK" > /dev/null 2>&1
+    fi
 
     if [ -S "$FIXED_SOCK" ]; then
         SSH_AGENT_SOCKET="$FIXED_SOCK"

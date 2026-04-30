@@ -111,6 +111,12 @@ devpod delete <workspace-name>
 - **SSH connection refused**: re-run `devpod up ... --ide none` to restart a stopped workspace
 - **Git auth fails**: check keys are loaded — `ssh-add -l`
 - **Tools missing (no zellij/claude)**: DevPod used a default image — ensure `.devcontainer/` exists in the repo (run `git subtree add` if not yet added)
+- **`ssh-add -l` inside container shows "no identities"**: the workspace was started before the host SSH agent had keys loaded, so DevPod's in-container helper is bound to an empty/stale agent. Reload the host agent and restart the workspace:
+  ```bash
+  source ~/.bashrc && ssh-add ~/.ssh/id_ed25519
+  devpod stop <workspace-name>
+  devpod up git@github.com:<org>/<repo>.git --ide none
+  ```
 
 ---
 
