@@ -10,7 +10,7 @@ Other repos consume this repo as a **git subtree** at `.devcontainer/`
 General-purpose development environment with unrestricted internet access.
 
 - **Base**: python:3-bookworm (Debian 12)
-- **Tools**: Claude Code CLI, Python 3 + pip + venv, GitHub CLI, Node.js/npm, Zellij, Git, fzf, jq, vim, cron
+- **Tools**: Claude Code CLI, Python 3 + pip + venv, GitHub CLI, Node.js/npm, tmux, Git, fzf, jq, vim, cron
 - **Network**: Full internet access — no firewall restrictions
 - **Use when**: Everyday development, running Claude CLI, accessing any external APIs or resources
 
@@ -110,7 +110,7 @@ devpod delete <workspace-name>
 - **Browser/GUI launches**: always include `--ide none`
 - **SSH connection refused**: re-run `devpod up ... --ide none` to restart a stopped workspace
 - **Git auth fails**: check keys are loaded — `ssh-add -l`
-- **Tools missing (no zellij/claude)**: DevPod used a default image — ensure `.devcontainer/` exists in the repo (run `git subtree add` if not yet added)
+- **Tools missing (no tmux/claude)**: DevPod used a default image — ensure `.devcontainer/` exists in the repo (run `git subtree add` if not yet added)
 - **`ssh-add -l` inside container shows "no identities"**: the workspace was started before the host SSH agent had keys loaded, so DevPod's in-container helper is bound to an empty/stale agent. Reload the host agent and restart the workspace:
   ```bash
   source ~/.bashrc && ssh-add ~/.ssh/id_ed25519
