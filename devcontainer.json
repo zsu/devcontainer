@@ -35,9 +35,6 @@
       "onAutoForward": "notify"
     }
   },
-  "features": {
-    "ghcr.io/devcontainers/features/systemd:1": {}
-  },
   "postCreateCommand": "git config --global submodule.recurse true && git config --global --add safe.directory \"$PWD\" && { [ -n \"$CODESPACES\" ] && git config --global url.\"https://github.com/\".insteadOf \"git@github.com:\"; true; } && { [ -f .gitmodules ] && git submodule update --init --recursive || true; } && bash -lc \"mkdir -p ~/.ssh && chmod 700 ~/.ssh && ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null && python3 --version && pip3 --version && gh --version | head -n 1 && tmux -V\"",
   "postStartCommand": "sudo service cron start"
 }
